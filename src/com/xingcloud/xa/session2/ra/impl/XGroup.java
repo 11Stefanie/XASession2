@@ -2,6 +2,7 @@ package com.xingcloud.xa.session2.ra.impl;
 
 import com.xingcloud.xa.session2.ra.Distinct;
 import com.xingcloud.xa.session2.ra.Group;
+import com.xingcloud.xa.session2.ra.Projection;
 import com.xingcloud.xa.session2.ra.Relation;
 import com.xingcloud.xa.session2.ra.RelationProvider;
 import com.xingcloud.xa.session2.ra.RowIterator;
@@ -42,18 +43,17 @@ public class XGroup extends AbstractOperation implements Group {
 		}
 
 		//3. group inputRows
-		Map<String, List<Object[]>> groupRows = getGroupRows();
+		Map<String, List<XRelation.XRow>> groupRows = getGroupRows();
 
 		//4. column filter
-		columnFilter(groupRows);
+		Map<String, Projection> groupProjections = getGroupProjections(columnMap, groupRows);
 
 		//5. projection of each group
-		//TODO
-		Map<String, List<Object[]>> groupResults = getGroupResults(groupRows);
+		Map<String, Relation> groupResults = getGroupResults(groupProjections);
 
 		//6. combine the results of each group
-		//TODO
-		return null;
+		XRelation relation = getGroupRelation(columnMap, groupResults);
+		return relation;
 	}
 
 	private Map<String, Integer> getOriginColumnMap() {
@@ -82,17 +82,17 @@ public class XGroup extends AbstractOperation implements Group {
 		return "c";
 	}
 
-	private Map<String, List<Object[]>> getGroupRows() {
-		Map<String, List<Object[]>> groups = new HashMap<>();
+	private Map<String, List<XRelation.XRow>> getGroupRows() {
+		Map<String, List<XRelation.XRow>> groups = new HashMap<>();
 		RowIterator inputIterator = relation.iterator();
 		while (inputIterator.hasNext()) {
 			XRelation.XRow inputRow = (XRelation.XRow) inputIterator.nextRow();
 			String groupKeyStr = getGroupKey(inputRow);
-			List<Object[]> groupRows = groups.get(groupKeyStr);
+			List<XRelation.XRow> groupRows = groups.get(groupKeyStr);
 			if (groupRows == null) {
 				groupRows = new ArrayList<>();
 			}
-			groupRows.add(inputRow.rowData);
+			groupRows.add(inputRow);
 			groups.put(groupKeyStr, groupRows);
 		}
 		return groups;
@@ -108,19 +108,57 @@ public class XGroup extends AbstractOperation implements Group {
 		return groupKeySb.toString();
 	}
 
-	private void columnFilter(Map<String, List<Object[]>> groupRows) {
-		for (List<Object[]> groupRowList : groupRows.values()) {
-
+	private Map<String, Projection> getGroupProjections(Map<String, Integer> columnIndexMap,
+																											Map<String, List<XRelation.XRow>> groupRows) {
+		Map<String, Projection> groupProjections = new HashMap<>();
+		for (String key : groupRows.keySet()) {
+			List<XRelation.XRow> groupRowList = groupRows.get(key);
+			List<Object[]> rowSet = new ArrayList<>();
+			int rowLength = projectionExpressions.length;
+			for (XRelation.XRow groupRow : groupRowList) {
+				Object[] row = new Object[rowLength];
+				int columnIndex = 0;
+				for (Expression expression : projectionExpressions) {
+					row[columnIndex++] = expression.evaluate(groupRow);
+				}
+				rowSet.add(row);
+			}
+			Projection projection = genProjection(columnIndexMap, rowSet);
+			groupProjections.put(key, projection);
 		}
-		//TODO
+		return groupProjections;
 	}
 
-	private Map<String, List<Object[]>> getGroupResults(Map<String, List<Object[]>> groupRows) {
-		Map<String, List<Object[]>> groupResults = new HashMap<>();
-		for (List<Object[]> groupRow : groupRows.values()) {
-			//TODO
+	private Projection genProjection(Map<String, Integer> columnIndexMap, List<Object[]> rowSet) {
+		Projection projection = new XProjection();
+		Relation relation = new XRelation(columnIndexMap, rowSet);
+		//TODO
+		projection.setInput(relation, projectionExpressions);
+		return projection;
+	}
+
+	private Map<String, Relation> getGroupResults(Map<String, Projection> projectionMap) {
+		Map<String, Relation> groupResults = new HashMap<>();
+		for (String key : projectionMap.keySet()) {
+			Projection projection = projectionMap.get(key);
+			Relation relation = projection.evaluate();
+			groupResults.put(key, relation);
 		}
 		return groupResults;
+	}
+
+	private XRelation getGroupRelation(Map<String, Integer> columnMap, Map<String, Relation> groupRelationMap) {
+		List<Object[]> rowSet = new ArrayList<>();
+		for (Relation relation : groupRelationMap.values()) {
+			RowIterator rowIterator = relation.iterator();
+
+			while (rowIterator.hasNext()) {
+				XRelation.XRow xRow = (XRelation.XRow) rowIterator.nextRow();
+				rowSet.add(xRow.rowData);
+			}
+		}
+
+		return new XRelation(columnMap, rowSet);
 	}
 
 	public Group setInput(RelationProvider relation, Expression[] groupingExpressions,
