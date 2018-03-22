@@ -3,6 +3,7 @@ package com.xingcloud.xa.session2.ra.impl;
 import com.xingcloud.xa.session2.ra.Aggregation;
 import com.xingcloud.xa.session2.ra.Count;
 import com.xingcloud.xa.session2.ra.RelationProvider;
+import com.xingcloud.xa.session2.ra.RowIterator;
 
 /**
  * Author: mulisen
@@ -11,7 +12,7 @@ import com.xingcloud.xa.session2.ra.RelationProvider;
 public class XCount extends AbstractAggregation implements Count {
 	RelationProvider relation;
 	public Aggregation setInput(RelationProvider relation) {
-        resetInput();
+		resetInput();
 		init();
 		this.relation = relation;
 		addInput(relation);
@@ -19,7 +20,13 @@ public class XCount extends AbstractAggregation implements Count {
 	}
 
 	public Object aggregate() {
-		return null;  //TODO method implementation
+		long count = 0L;
+		RowIterator rowIterator = relation.iterator();
+		while (rowIterator.hasNext()) {
+			rowIterator.nextRow();
+			count++;
+		}
+		return count;
 	}
 
 	public void init() {

@@ -11,7 +11,7 @@ public class PlanExecutor {
 
 	public static RelationProvider executePlan(Operation root){
 		System.out.println("root = " + root);
-		//TODO 执行root为根节点的Plan，返回执行结果
-		return null;
+		//执行root为根节点的Plan，返回执行结果
+		return root.evaluate();
 	}
 }
