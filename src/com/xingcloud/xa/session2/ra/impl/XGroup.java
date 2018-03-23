@@ -39,7 +39,7 @@ public class XGroup extends AbstractOperation implements Group {
 		int columnIndex = 0;
 		for (Expression expression : projectionExpressions) {
 			expressionList.add(expression);
-			columnMap.put(getColumnName(expression), columnIndex++);
+			columnMap.put(getColumnName(expression, columnIndex), columnIndex++);
 		}
 
 		//3. group inputRows
@@ -67,7 +67,7 @@ public class XGroup extends AbstractOperation implements Group {
 		return columnMap;
 	}
 
-	private String getColumnName(Expression expression) {
+	private String getColumnName(Expression expression, int columnIndex) {
 		if (expression instanceof ColumnValue) {
 			return ((ColumnValue) expression).columnName;
 		}
@@ -79,7 +79,7 @@ public class XGroup extends AbstractOperation implements Group {
 		}
 
 		//TODO
-		return "c";
+		return "c" + columnIndex;
 	}
 
 	private Map<String, List<XRelation.XRow>> getGroupRows() {
@@ -114,14 +114,9 @@ public class XGroup extends AbstractOperation implements Group {
 		for (String key : groupRows.keySet()) {
 			List<XRelation.XRow> groupRowList = groupRows.get(key);
 			List<Object[]> rowSet = new ArrayList<>();
-			int rowLength = projectionExpressions.length;
 			for (XRelation.XRow groupRow : groupRowList) {
-				Object[] row = new Object[rowLength];
-				int columnIndex = 0;
-				for (Expression expression : projectionExpressions) {
-					row[columnIndex++] = expression.evaluate(groupRow);
-				}
-				rowSet.add(row);
+				Object[] rowData = groupRow.rowData;
+				rowSet.add(rowData);
 			}
 			Projection projection = genProjection(columnIndexMap, rowSet);
 			groupProjections.put(key, projection);
@@ -132,7 +127,6 @@ public class XGroup extends AbstractOperation implements Group {
 	private Projection genProjection(Map<String, Integer> columnIndexMap, List<Object[]> rowSet) {
 		Projection projection = new XProjection();
 		Relation relation = new XRelation(columnIndexMap, rowSet);
-		//TODO
 		projection.setInput(relation, projectionExpressions);
 		return projection;
 	}

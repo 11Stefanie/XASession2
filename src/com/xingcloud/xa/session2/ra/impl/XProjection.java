@@ -1,6 +1,11 @@
 package com.xingcloud.xa.session2.ra.impl;
 
-import com.xingcloud.xa.session2.ra.*;
+import com.xingcloud.xa.session2.ra.Distinct;
+import com.xingcloud.xa.session2.ra.Projection;
+import com.xingcloud.xa.session2.ra.Relation;
+import com.xingcloud.xa.session2.ra.RelationProvider;
+import com.xingcloud.xa.session2.ra.Row;
+import com.xingcloud.xa.session2.ra.RowIterator;
 import com.xingcloud.xa.session2.ra.expr.AggregationExpr;
 import com.xingcloud.xa.session2.ra.expr.ColumnValue;
 import com.xingcloud.xa.session2.ra.expr.Constant;
@@ -40,7 +45,7 @@ public class XProjection extends AbstractOperation implements Projection{
 				}
 			} else {
 				expressionList.add(expression);
-				columnMap.put(getColumnName(expression), columnIndex++);
+				columnMap.put(getColumnName(expression, columnIndex), columnIndex++);
 			}
 		}
 
@@ -83,7 +88,7 @@ public class XProjection extends AbstractOperation implements Projection{
 		return expression instanceof ColumnValue && "*".equals(((ColumnValue) expression).columnName);
 	}
 
-	private String getColumnName(Expression expression) {
+	private String getColumnName(Expression expression, int columnIndex) {
 		if (expression instanceof ColumnValue) {
 			return ((ColumnValue) expression).columnName;
 		}
@@ -95,7 +100,7 @@ public class XProjection extends AbstractOperation implements Projection{
 		}
 
 		//TODO
-		return "c";
+		return "c" + columnIndex;
 	}
 
 	private List<Object[]> getRows(RowIterator rowIterator, List<Expression> expressionList) {
